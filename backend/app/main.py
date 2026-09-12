@@ -43,11 +43,11 @@ app.include_router(ondc.router)
 
 @app.on_event("startup")
 def on_startup():
-    os.makedirs(settings.media_root, exist_ok=True)
-    os.makedirs(settings.chunk_tmp_root, exist_ok=True)
     Base.metadata.create_all(bind=engine)
     logger.info("Startup complete: tables ensured, media directories ready.")
 
+os.makedirs(settings.media_root, exist_ok=True)
+os.makedirs(settings.chunk_tmp_root, exist_ok=True)
 app.mount("/media", StaticFiles(directory=settings.media_root), name="media")
 
 

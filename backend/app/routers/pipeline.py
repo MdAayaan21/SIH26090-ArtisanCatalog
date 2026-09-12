@@ -20,6 +20,7 @@ import os
 from typing import List
 
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -38,6 +39,12 @@ async def run_pipeline(product_id: str, db: Session = Depends(get_db)):
     if product is None:
         raise HTTPException(404, "Product not found")
 
+    if product.status not in (ProductStatus.DRAFT, ProductStatus.ENRICHED):
+        raise HTTPException(
+            409,
+            f"Pipeline already ran or is running for this product (status={product.status.value})",
+        )
+
     batch = product.sync_batch
     artisan = db.query(Artisan).filter(Artisan.id == product.artisan_id).first()
 
@@ -48,7 +55,7 @@ async def run_pipeline(product_id: str, db: Session = Depends(get_db)):
     try:
         transcript_text = await _run_asr_step(product, artisan, db)
         extracted = await _run_extraction_step(product, transcript_text, artisan, db)
-        _run_vision_step(product, db)
+        await _run_vision_step(product, db)
         price_result = _run_pricing_step(product, db)
         readback_text = _build_readback_text(product, price_result)
 
@@ -120,13 +127,15 @@ async def _run_extraction_step(product: Product, transcript: str, artisan: Artis
     return extracted
 
 
-def _run_vision_step(product: Product, db: Session) -> List[str]:
+async def _run_vision_step(product: Product, db: Session) -> List[str]:
     raw_paths = product.raw_photo_paths or []
     if not raw_paths:
         logger.warning("Product %s has no raw photos to process", product.id)
         return []
 
-    processed = vision_service.process_product_photos(raw_paths, product.id, settings.media_root)
+    processed = await run_in_threadpool(
+        vision_service.process_product_photos, raw_paths, product.id, settings.media_root
+    )
     product.processed_photo_paths = processed
     db.commit()
     return processed

@@ -4,7 +4,7 @@ tap-to-confirm action the readback card (Member 2) calls once the artisan
 has heard the TTS summary and taps "Confirm".
 """
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -17,8 +17,8 @@ router = APIRouter(prefix="/products", tags=["products"])
 @router.post("/from-batch/{client_batch_id}", response_model=ProductOut)
 def create_product_from_batch(
     client_batch_id: str,
-    audio_file_id: str,
-    photo_file_ids: list[str],
+    audio_file_id: str = Query(...),
+    photo_file_ids: list[str] = Query(...),
     db: Session = Depends(get_db),
 ):
     """Called once all chunks for a capture session have been assembled

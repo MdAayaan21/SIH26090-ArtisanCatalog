@@ -10,6 +10,7 @@ import os
 import logging
 from typing import Optional
 
+import aiofiles
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from sqlalchemy.orm import Session
 
@@ -21,8 +22,12 @@ logger = logging.getLogger("upload_router")
 router = APIRouter(prefix="/upload", tags=["upload"])
 
 
+def _chunk_dir_path(client_batch_id: str, file_id: str) -> str:
+    return os.path.join(settings.chunk_tmp_root, client_batch_id, file_id)
+
+
 def _chunk_dir(client_batch_id: str, file_id: str) -> str:
-    path = os.path.join(settings.chunk_tmp_root, client_batch_id, file_id)
+    path = _chunk_dir_path(client_batch_id, file_id)
     os.makedirs(path, exist_ok=True)
     return path
 
@@ -50,15 +55,15 @@ async def upload_chunk(
     chunk_path = os.path.join(chunk_dir, f"{chunk_index:06d}.part")
 
     contents = await chunk.read()
-    with open(chunk_path, "wb") as f:
-        f.write(contents)
+    async with aiofiles.open(chunk_path, "wb") as f:
+        await f.write(contents)
 
     received = len(os.listdir(chunk_dir))
     is_complete = received >= total_chunks
 
     final_path = None
     if is_complete:
-        final_path = _assemble_chunks(chunk_dir, client_batch_id, file_id, media_type, total_chunks)
+        final_path = await _assemble_chunks(chunk_dir, client_batch_id, file_id, media_type, total_chunks)
 
     return {
         "file_id": file_id,
@@ -70,19 +75,19 @@ async def upload_chunk(
     }
 
 
-def _assemble_chunks(chunk_dir: str, client_batch_id: str, file_id: str, media_type: str, total_chunks: int) -> str:
+async def _assemble_chunks(chunk_dir: str, client_batch_id: str, file_id: str, media_type: str, total_chunks: int) -> str:
     ext = "webp" if media_type == "photo" else "wav"
     out_dir = os.path.join(settings.media_root, "raw", client_batch_id)
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, f"{file_id}.{ext}")
 
-    with open(out_path, "wb") as outfile:
+    async with aiofiles.open(out_path, "wb") as outfile:
         for i in range(total_chunks):
             part_path = os.path.join(chunk_dir, f"{i:06d}.part")
             if not os.path.exists(part_path):
                 raise HTTPException(409, f"Missing chunk {i} — cannot assemble yet")
-            with open(part_path, "rb") as part:
-                outfile.write(part.read())
+            async with aiofiles.open(part_path, "rb") as part:
+                await outfile.write(await part.read())
 
     # cleanup temp chunks now the final file is written
     for i in range(total_chunks):
@@ -97,7 +102,9 @@ def _assemble_chunks(chunk_dir: str, client_batch_id: str, file_id: str, media_t
 def upload_status(client_batch_id: str, file_id: str):
     """Lets the client ask 'which chunks do you already have?' after
     reconnecting, so it only resends what's missing."""
-    chunk_dir = _chunk_dir(client_batch_id, file_id)
+    chunk_dir = _chunk_dir_path(client_batch_id, file_id)
+    if not os.path.isdir(chunk_dir):
+        return {"file_id": file_id, "received_chunk_indices": []}
     received = sorted(
         int(name.split(".")[0]) for name in os.listdir(chunk_dir) if name.endswith(".part")
     )

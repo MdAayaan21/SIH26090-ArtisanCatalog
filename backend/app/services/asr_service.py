@@ -14,6 +14,7 @@ from typing import Optional
 
 import httpx
 from openai import OpenAI
+from fastapi.concurrency import run_in_threadpool
 
 from ..config import settings
 
@@ -111,7 +112,7 @@ async def transcribe_audio(audio_bytes: bytes, filename: str, language: str = "h
         return result.to_dict()
 
     try:
-        result = _transcribe_with_whisper(audio_bytes, filename, language)
+        result = await run_in_threadpool(_transcribe_with_whisper, audio_bytes, filename, language)
         return result.to_dict()
     except Exception as exc:
         logger.error("Both Bhashini and Whisper failed: %s", exc)
