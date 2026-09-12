@@ -3,7 +3,7 @@
  * the capture UI so the app itself opens even with zero connectivity.
  * Data (drafts, media) is handled separately by IndexedDB, not by this cache.
  */
-const CACHE_NAME = "kaarigar-shell-v1";
+const CACHE_NAME = "kaarigar-shell-v2";
 const APP_SHELL = [
   "./index.html",
   "./styles.css",
