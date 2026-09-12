@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Kaarigar Bazaar — Voice Catalog</title>
+<link rel="stylesheet" href="styles.css" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#B5541F" />
+</head>
+<body>
+
+  <!-- ============================================================ -->
+  <!-- SYNC STATUS BAR (Member 3: offline/online + queue indicator) -->
+  <!-- ============================================================ -->
+  <div id="sync-bar" class="sync-bar" data-state="offline">
+    <span class="sync-dot"></span>
+    <span id="sync-label">Offline — saved on this phone</span>
+    <span id="queue-count" class="queue-count" hidden></span>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SCREEN 1: CAMERA CAPTURE (Member 2)                          -->
+  <!-- ============================================================ -->
+  <section id="screen-camera" class="screen active">
+    <video id="camera-feed" autoplay playsinline muted></video>
+    <canvas id="capture-canvas" hidden></canvas>
+
+    <div class="camera-overlay">
+      <div class="camera-frame-guide"></div>
+      <p class="camera-hint">Apni cheez ko is frame ke andar rakhein</p>
+    </div>
+
+    <div id="shot-strip" class="shot-strip" aria-label="Captured photos"></div>
+
+    <div class="camera-controls">
+      <button id="btn-review" class="icon-button ghost" disabled>
+        <span class="icon-count" id="shot-count">0</span>
+        Photos
+      </button>
+      <button id="btn-shutter" class="shutter-button" aria-label="Photo lein">
+        <span class="shutter-ring"></span>
+      </button>
+      <button id="btn-next-to-mic" class="icon-button primary" disabled>
+        Aage &rarr;
+      </button>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- SCREEN 2: VOICE RECORDING (Member 2)                         -->
+  <!-- ============================================================ -->
+  <section id="screen-voice" class="screen">
+    <header class="screen-header">
+      <button class="back-button" data-target="screen-camera">&larr;</button>
+      <h1>Awaaz mein bataayein</h1>
+    </header>
+
+    <p class="voice-prompt">
+      Batayein: yeh kya hai, kitna samay laga banane mein, kitna maal laga,
+      aur kitne piece hain.
+    </p>
+
+    <div class="mic-stage">
+      <button id="btn-mic" class="mic-button" aria-label="Recording shuru karein">
+        <svg viewBox="0 0 24 24" class="mic-icon" fill="currentColor">
+          <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/>
+          <path d="M19 11a1 1 0 0 0-2 0 5 5 0 0 1-10 0 1 1 0 0 0-2 0 7 7 0 0 0 6 6.92V20H9a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2h-2v-2.08A7 7 0 0 0 19 11z"/>
+        </svg>
+        <span class="mic-pulse" aria-hidden="true"></span>
+      </button>
+      <p id="mic-status" class="mic-status">Bolne ke liye button dabaayein</p>
+      <div id="mic-waveform" class="mic-waveform" hidden>
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <p id="mic-timer" class="mic-timer" hidden>00:00</p>
+    </div>
+
+    <button id="btn-submit-listing" class="wide-button primary" disabled>
+      Listing banaayein
+    </button>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- SCREEN 3: PROCESSING (waiting on backend pipeline)           -->
+  <!-- ============================================================ -->
+  <section id="screen-processing" class="screen">
+    <div class="processing-stage">
+      <div class="spinner" aria-hidden="true"></div>
+      <p id="processing-label">Aapki listing taiyaar ho rahi hai&hellip;</p>
+      <p class="processing-sub">Dhaage se lekar keemat tak, sab kuch check ho raha hai</p>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- SCREEN 4: READBACK CONFIRMATION CARD (Member 2)              -->
+  <!-- ============================================================ -->
+  <section id="screen-readback" class="screen">
+    <div class="readback-card">
+      <img id="readback-photo" class="readback-photo" alt="Product photo" />
+
+      <div class="readback-body">
+        <h2 id="readback-title">&nbsp;</h2>
+        <p id="readback-desc"></p>
+
+        <div class="readback-price">
+          <span class="readback-price-label">Suggested price</span>
+          <span id="readback-price-value">₹0</span>
+        </div>
+        <p id="readback-fallback-note" class="readback-fallback-note" hidden>
+          Kuch details anumaanit hain — aap inhe badal sakte hain
+        </p>
+
+        <button id="btn-play-readback" class="icon-button ghost readback-play">
+          &#9658; Sunein
+        </button>
+      </div>
+
+      <div class="readback-actions">
+        <button id="btn-reject" class="wide-button ghost">Dobara record karein</button>
+        <button id="btn-confirm" class="wide-button primary">✓ Confirm karein</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- SCREEN 5: DONE / QUEUE VIEW                                  -->
+  <!-- ============================================================ -->
+  <section id="screen-done" class="screen">
+    <div class="done-stage">
+      <div class="done-check">✓</div>
+      <p>Listing safaltapoorvak jama ho gayi!</p>
+      <button id="btn-new-listing" class="wide-button primary">Nayi listing banaayein</button>
+    </div>
+  </section>
+
+  <audio id="readback-audio" hidden></audio>
+
+  <script src="db.js"></script>
+  <script src="compress.js"></script>
+  <script src="sync-daemon.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
