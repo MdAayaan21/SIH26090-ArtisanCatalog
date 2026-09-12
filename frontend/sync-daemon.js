@@ -77,13 +77,29 @@ const SyncDaemon = (() => {
       await uploadFileResumable(draft.clientBatchId, fileMeta, blobRecord.blob);
     }
 
-    // 3. tell the backend to run the AI pipeline, then flag draft committed locally
+    // 3. create the Product record from the uploaded files, then trigger the
+    // AI pipeline (ASR -> extraction -> vision -> pricing). Both endpoints
+    // take query params, not a JSON body.
     await ArtisanDB.updateDraftState(draft.clientBatchId, { syncState: "processing" });
-    await fetch(`${API_BASE}/sync/${draft.clientBatchId}/advance`, {
+
+    const audioFile = draft.files.find((f) => f.mediaType === "audio");
+    const photoFiles = draft.files.filter((f) => f.mediaType === "photo");
+
+    const params = new URLSearchParams();
+    params.set("audio_file_id", audioFile.fileId);
+    photoFiles.forEach((f) => params.append("photo_file_ids", f.fileId));
+
+    const productResp = await fetch(
+      `${API_BASE}/products/from-batch/${draft.clientBatchId}?${params.toString()}`,
+      { method: "POST" }
+    );
+    if (!productResp.ok) throw new Error("Failed to create product from batch");
+    const product = await productResp.json();
+
+    const pipelineResp = await fetch(`${API_BASE}/pipeline/run/${product.id}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ next_status: "processing" }),
     });
+    if (!pipelineResp.ok) throw new Error("Pipeline run failed");
   }
 
   async function uploadFileResumable(clientBatchId, fileMeta, blob) {

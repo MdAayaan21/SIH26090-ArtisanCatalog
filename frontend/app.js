@@ -242,6 +242,15 @@
   // ==========================================================================
   // Readback confirmation card
   // ==========================================================================
+  function buildMediaUrl(rawPath) {
+    if (!rawPath) return "";
+    // Backend stores paths like "./media/processed/<id>/photo_0.webp" relative
+    // to MEDIA_ROOT. Strip that root prefix and encode each segment separately
+    // so slashes survive as path separators instead of becoming %2F.
+    const relative = rawPath.replace(/^\.?\/?media\//, "");
+    return `${API_BASE}/media/${relative.split("/").map(encodeURIComponent).join("/")}`;
+  }
+
   function showReadback(product) {
     state.currentProductId = product.id;
     $("readback-title").textContent = product.title || "Aapka utpaad";
@@ -250,7 +259,7 @@
     $("readback-fallback-note").hidden = !product.used_benchmark_fallback;
 
     const firstPhoto = (product.processed_photo_paths || [])[0];
-    $("readback-photo").src = firstPhoto ? `${API_BASE}/media/${encodeURIComponent(firstPhoto)}` : "";
+    $("readback-photo").src = buildMediaUrl(firstPhoto);
 
     showScreen("screen-readback");
   }

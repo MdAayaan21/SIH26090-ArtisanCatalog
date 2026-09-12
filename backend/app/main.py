@@ -10,6 +10,7 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from .database import Base, engine
 from .config import settings
@@ -46,6 +47,8 @@ def on_startup():
     os.makedirs(settings.chunk_tmp_root, exist_ok=True)
     Base.metadata.create_all(bind=engine)
     logger.info("Startup complete: tables ensured, media directories ready.")
+
+app.mount("/media", StaticFiles(directory=settings.media_root), name="media")
 
 
 @app.get("/health")
