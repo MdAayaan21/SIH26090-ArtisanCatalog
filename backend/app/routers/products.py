@@ -32,7 +32,15 @@ def create_product_from_batch(
         raise HTTPException(404, "Batch not found")
 
     raw_dir = os.path.join(settings.media_root, "raw", client_batch_id)
-    audio_path = os.path.join(raw_dir, f"{audio_file_id}.wav")
+    audio_path = None
+    for ext in ["webm", "mp4", "wav"]:
+        candidate = os.path.join(raw_dir, f"{audio_file_id}.{ext}")
+        if os.path.exists(candidate):
+            audio_path = candidate
+            break
+    if audio_path is None:
+        audio_path = os.path.join(raw_dir, f"{audio_file_id}.webm")
+
     photo_paths = [os.path.join(raw_dir, f"{fid}.webp") for fid in photo_file_ids]
 
     product = Product(

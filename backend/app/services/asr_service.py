@@ -52,7 +52,7 @@ async def _transcribe_with_bhashini(audio_bytes: bytes, language: str) -> Option
                 "taskType": "asr",
                 "config": {
                     "language": {"sourceLanguage": lang_code},
-                    "serviceId": "",  # resolved by pipelineId at compute time
+                    "serviceId": settings.bhashini_service_id,
                     "audioFormat": "wav",
                     "samplingRate": 16000,
                 },
