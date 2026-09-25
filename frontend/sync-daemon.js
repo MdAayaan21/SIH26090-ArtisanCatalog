@@ -127,6 +127,9 @@ const SyncDaemon = (() => {
       form.append("chunk_index", i);
       form.append("total_chunks", totalChunks);
       form.append("media_type", fileMeta.mediaType);
+      if (fileMeta.mimeType) {
+        form.append("mime_type", fileMeta.mimeType);
+      }
       form.append("chunk", chunkBlob);
 
       // eslint-disable-next-line no-await-in-loop

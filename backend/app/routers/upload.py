@@ -39,6 +39,7 @@ async def upload_chunk(
     chunk_index: int = Form(...),
     total_chunks: int = Form(...),
     media_type: str = Form(...),       # "photo" | "audio"
+    mime_type: Optional[str] = Form(None),
     chunk: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
@@ -58,12 +59,21 @@ async def upload_chunk(
     async with aiofiles.open(chunk_path, "wb") as f:
         await f.write(contents)
 
-    received = len(os.listdir(chunk_dir))
-    is_complete = received >= total_chunks
+    received_indices = []
+    if os.path.exists(chunk_dir):
+        for name in os.listdir(chunk_dir):
+            if name.endswith(".part"):
+                prefix = name.split(".")[0]
+                if prefix.isdigit():
+                    received_indices.append(int(prefix))
+    received_set = set(received_indices)
+    expected_set = set(range(total_chunks))
+    is_complete = expected_set.issubset(received_set)
+    received = len(received_set)
 
     final_path = None
     if is_complete:
-        final_path = await _assemble_chunks(chunk_dir, client_batch_id, file_id, media_type, total_chunks)
+        final_path = await _assemble_chunks(chunk_dir, client_batch_id, file_id, media_type, total_chunks, mime_type)
 
     return {
         "file_id": file_id,
@@ -75,8 +85,19 @@ async def upload_chunk(
     }
 
 
-async def _assemble_chunks(chunk_dir: str, client_batch_id: str, file_id: str, media_type: str, total_chunks: int) -> str:
-    ext = "webp" if media_type == "photo" else "wav"
+async def _assemble_chunks(chunk_dir: str, client_batch_id: str, file_id: str, media_type: str, total_chunks: int, mime_type: Optional[str] = None) -> str:
+    if media_type == "photo":
+        ext = "webp"
+    elif media_type == "audio":
+        if mime_type and "mp4" in mime_type.lower():
+            ext = "mp4"
+        elif mime_type and "wav" in mime_type.lower():
+            ext = "wav"
+        else:
+            ext = "webm"
+    else:
+        ext = "bin"
+
     out_dir = os.path.join(settings.media_root, "raw", client_batch_id)
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, f"{file_id}.{ext}")
@@ -105,7 +126,10 @@ def upload_status(client_batch_id: str, file_id: str):
     chunk_dir = _chunk_dir_path(client_batch_id, file_id)
     if not os.path.isdir(chunk_dir):
         return {"file_id": file_id, "received_chunk_indices": []}
-    received = sorted(
-        int(name.split(".")[0]) for name in os.listdir(chunk_dir) if name.endswith(".part")
-    )
-    return {"file_id": file_id, "received_chunk_indices": received}
+    received = []
+    for name in os.listdir(chunk_dir):
+        if name.endswith(".part"):
+            prefix = name.split(".")[0]
+            if prefix.isdigit():
+                received.append(int(prefix))
+    return {"file_id": file_id, "received_chunk_indices": sorted(received)}

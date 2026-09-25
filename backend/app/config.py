@@ -18,13 +18,14 @@ class Settings(BaseSettings):
     bhashini_udyat_key: str = ""
     bhashini_inference_key: str = ""
     bhashini_pipeline_id: str = ""
+    bhashini_service_id: str = ""
 
     # --- Whisper fallback (Member 5) ---
     openai_api_key: str = ""
     whisper_model: str = "whisper-1"
 
     # --- LLM extraction (Member 5) ---
-    extraction_model: str = "claude-sonnet-4-6"
+    extraction_model: str = "claude-3-5-sonnet-20241022"
     anthropic_api_key: str = ""
 
     # --- Pricing defaults (Member 6) ---

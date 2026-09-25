@@ -179,7 +179,7 @@
 
     const files = [
       ...state.photos.map(({ fileId }) => ({ fileId, mediaType: "photo", blobKey: `${clientBatchId}:${fileId}` })),
-      { fileId: state.audioFileId, mediaType: "audio", blobKey: `${clientBatchId}:${state.audioFileId}` },
+      { fileId: state.audioFileId, mediaType: "audio", blobKey: `${clientBatchId}:${state.audioFileId}`, mimeType: state.audioBlob.type },
     ];
 
     const mediaBlobs = [
